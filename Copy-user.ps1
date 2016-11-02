@@ -24,7 +24,7 @@ Author: Ken Vanden Branden
 #Either provide the parameters with values when executing the script or they will use the defaults below.
 Param (
         [Parameter(Mandatory=$false, position=0)][string]$CSVlocation = ".\users.csv", # users.csv in same dir as the script
-        [Parameter(Mandatory=$false, position=1)][string]$Password = "FrizzleFraz1234",
+        [Parameter(Mandatory=$false, position=1)][string]$Password = "Vdab1234",
         [Parameter(Mandatory=$true, position=2)][Validateset("PHP","DotNet","ISM","Java","TNI","SysBeheer")][string]$Course,
         [switch]$IsDisabled
         )
@@ -49,11 +49,12 @@ $i++
             {
             #$_ gets lost between try and catch. Redefining.
             $Erroruser = $_
-            $Template = Get-ADUser -Identity "Template"
-            #new-aduser -GivenName $_.GivenName -Surname $_.Surname -Department $_.Department -Title $_.title -Name "$($_.GivenName) $($_.Surname)" -SamAccountName "$($_.GivenName).$($_.Surname)" -UserPrincipalName "$($_.GivenName).$($_.Surname)@$($domain.Forest)" -Instance $($Template) -Description $datum -path "ou=$($_.ou),ou=users,ou=vdab_heverlee, dc=vdabheverlee, dc=intra" -ErrorAction Stop
-            new-aduser -GivenName $_.Givenname -Surname $_.Surname -SamAccountName "$($_.GivenName).$($_.Surname)" -Name $_.GivenName -Instance $Template
+            $Template = Get-ADUser -Identity "Template" -Properties office, department, title, physicaldeliveryofficename
+            $ou = $Template.DistinguishedName -replace '^cn=.+?(?!\\),'
+            new-aduser -GivenName $_.GivenName -Surname $_.Surname -Department $_.Department -Title $_.title -Name "$($_.GivenName) $($_.Surname)" -SamAccountName "$($_.GivenName).$($_.Surname)" -UserPrincipalName "$($_.GivenName).$($_.Surname)@$($domain.Forest)" -Instance $($Template) -Path $ou -Description $datum -Enabled:$false -ErrorAction Stop
             Write-Verbose "$($Erroruser.GivenName) $($Erroruser.Surname) created"
             "$($Erroruser.GivenName) $($Erroruser.Surname) created" | Out-File c:\Create-user-log.txt -Append
+            #get-aduser -Identity "Template" -Properties memberof | Select-Object -ExpandProperty memberof | Add-ADGroupMember -Members "$($_.GivenName) $($_.Surname)" -PassThru
             }
             catch
             {

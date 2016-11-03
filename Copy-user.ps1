@@ -1,9 +1,9 @@
 ﻿#Requires -Modules ActiveDirectory
 <#
 .SYNOPSIS
-A simple bulk user import script which reads users from a .csv file and imports them into AD. Requires domain admin or delegated rights. Can be run on client with RSAT-tools installed
+A simple bulk user import script which reads users from a .csv file and imports them into AD, based on a template user. Requires domain admin or delegated rights. Can be run on client with RSAT-tools installed
 .DESCRIPTION
-A simple bulk user import script which reads users from a .csv file and imports them into AD. Requires domain admin or delegated rights. Can be run on client with RSAT-tools installed
+A simple bulk user import script which reads users from a .csv file and imports them into AD, based on a template user. Requires domain admin or delegated rights. Can be run on client with RSAT-tools installed
 .PARAMETER CSVLocation
 location of your .csv with usernames (string)
 .PARAMETER password
@@ -25,7 +25,7 @@ Author: Ken Vanden Branden
 Param (
         [Parameter(Mandatory=$false, position=0)][string]$CSVlocation = ".\users.csv", # users.csv in same dir as the script
         [Parameter(Mandatory=$false, position=1)][string]$Password = "Vdab1234",
-        [Parameter(Mandatory=$true, position=2)][Validateset("PHP","DotNet","ISM","Java","TNI","SysBeheer")][string]$Course,
+        [Parameter(Mandatory=$true, position=2)][Validateset("PHP","DotNet","ICTSupport","Java","TNI","SysBeheer")][string]$Course,
         [switch]$IsDisabled
         )
 
@@ -39,22 +39,23 @@ $Datum = Get-Date
 $Secpass = ConvertTo-SecureString $password -AsPlainText -Force
 $Users = Import-Csv $CSVlocation | ForEach-Object {
 $i++
-#$AccountExist = get-aduser -Identity "$($_.GivenName)$($_.Surname)"
-#write-host $AccountExist
-        #Create the user with some properties
-        #Other properties can be added as long as both the csv file and the new-aduser cmdlet are altered.
         #if($_.Givenname.Length -GT 0 -and $_.surname.Length -GT 0 -and $_.Department.Length -GT 0 -and $_.title.length -GT 0)
         #{
             try
             {
             #$_ gets lost between try and catch. Redefining.
             $Erroruser = $_
-            $Template = Get-ADUser -Identity "Template" -Properties office, department, title, physicaldeliveryofficename
+            #The template account is based on the input of $course and "cursist"
+            $CreateTemplate = $Course + "Cursist"
+            #Important: specify the properties to be copied.
+            $Template = Get-ADUser -Identity $CreateTemplate -Properties office, department, title, physicaldeliveryofficename
+            #Copy OU of template account. The regular expression gets rid of unwanted information.
             $ou = $Template.DistinguishedName -replace '^cn=.+?(?!\\),'
+            #User account has to be created as disabled
             new-aduser -GivenName $_.GivenName -Surname $_.Surname -Department $_.Department -Title $_.title -Name "$($_.GivenName) $($_.Surname)" -SamAccountName "$($_.GivenName).$($_.Surname)" -UserPrincipalName "$($_.GivenName).$($_.Surname)@$($domain.Forest)" -Instance $($Template) -Path $ou -Description $datum -Enabled:$false -ErrorAction Stop
             Write-Verbose "$($Erroruser.GivenName) $($Erroruser.Surname) created"
             "$($Erroruser.GivenName) $($Erroruser.Surname) created" | Out-File c:\Create-user-log.txt -Append
-            #get-aduser -Identity "Template" -Properties memberof | Select-Object -ExpandProperty memberof | Add-ADGroupMember -Members "$($_.GivenName) $($_.Surname)" -PassThru
+            get-aduser -Identity $Template -Properties memberof | Select-Object -ExpandProperty memberof | Add-ADGroupMember -Members "$($_.GivenName).$($_.Surname)" -PassThru
             }
             catch
             {

@@ -35,10 +35,10 @@ if(Test-Path $CSVlocation -PathType Leaf)
 $Domain= Get-ADDomain
 $AlreadyExists = $false
 $i = 0
-$Datum = Get-Date
 $Secpass = ConvertTo-SecureString $password -AsPlainText -Force
 $Users = Import-Csv $CSVlocation | ForEach-Object {
 $i++
+$Datum = Get-Date
         #if($_.Givenname.Length -GT 0 -and $_.surname.Length -GT 0 -and $_.Department.Length -GT 0 -and $_.title.length -GT 0)
         #{
             try
@@ -61,8 +61,6 @@ $i++
             $ou = $Template.DistinguishedName -replace '^cn=.+?(?!\\),'
             #User account has to be created as disabled
             new-aduser -GivenName $_.GivenName -Surname $_.Surname -Department $_.Department -Title $_.title -Name "$($_.GivenName) $($_.Surname)" -SamAccountName "$($_.GivenName).$($_.Surname)" -UserPrincipalName "$($_.GivenName).$($_.Surname)@$($domain.Forest)" -Instance $($Template) -Path $ou -Description $datum -Enabled:$false -ErrorAction Stop
-            Write-Verbose "$($_.GivenName) $($_..Surname) created"
-            "$datum : $($_.GivenName) $($_.Surname) created" | Out-File c:\Create-user-log.txt -Append
             }
                 catch
                 {
@@ -71,6 +69,8 @@ $i++
                 #Set a flag to prevent changing an existing user's password.
                 $AlreadyExists = $true
                 }
+            Write-Verbose "$($_.GivenName) $($_.Surname) created"
+            "$datum : $($_.GivenName) $($_.Surname) created" | Out-File c:\Create-user-log.txt -Append
             try
             {
             #Make new account also member of template user's groups.
@@ -116,6 +116,7 @@ $i++
     #}
 else
     {
+    $Datum = Get-Date
     "$Datum : $Csvlocation does not exist" | Out-File c:\Create-user-errors.txt -Append
     Write-warning "$Csvlocation does not exist"
     }
